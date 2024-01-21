@@ -90,7 +90,50 @@ class AudioLibraryOrganizer:
             self.all_tags = tags
             
         return tags
-            
+
+
+
+    def create_tag_map(self):
+        if self.all_tags == None:
+            return ValueError('self.all_tags not initialized, value is currently set to None')
+
+        tag_map = {}
+
+        for tag in all_tags:
+            operation = 'none'
+            while operation not in ['delete', 'change', 'keep', 'mimic']:
+                operation = input(
+                    'Input operation to do on current tag "{tag}", "delete" "mimic" "change" "keep": '
+                )
+
+            if operation == 'delete':
+                tagmap[tag] = operation
+            elif operation == 'change':
+                unique_tag_check = True
+                new_tag = ''
+                while unique_tag_check:
+                    new_tag = input(f'What tag should "{tag}" be changed to? ')
+                    if new_tag not in self.all_tagsv
+                        cont = input('This tag is not in self.all_tags, continue to change? y/n: ')
+                        if cont.lower() == 'y':
+                            unique_tag_check = False
+                tag_map[tag] = new_tag
+            elif operation == 'mimic':
+                tag_to_mimic = ''
+                while tag_to_mimic not in self.all_tagsv
+                    tag_to_mimic = input('Input name of tag to mimic: ')
+                    if tag_to_mimic not in self.all_tags:
+                        print(f'Invalid tag must be from the following: {self.all_tags}')
+            elif operation == 'keep':
+                tag_map[tag] = 'keep'
+
+            self.tag_map = tag_map
+            return tag_map
+
+'''
+testing the class out with the code below
+'''
+
 import pprint
 bb = 'bad_bunny_un_verano_sin_ti'
 kg = 'Mañana Será bonito'
