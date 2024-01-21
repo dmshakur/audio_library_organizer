@@ -130,6 +130,39 @@ class AudioLibraryOrganizer:
             self.tag_map = tag_map
             return tag_map
 
+
+
+    def create_filename_format(self):
+        filename_tags = []
+        separator = '?'
+        case = ''
+        invalid_separators = '/><:"\'\n?*|'
+        case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
+
+        while capital not in case_options:
+            case = input('Input the case type that all filenames should have, only the following options are valid, {case_options}: ')
+
+        print(f'From the following tags, select which you would like to appear in filenames and in the order that you want them to appear:\n{', '.join(self.all_tags)}')
+
+        filename_format_validation_check = True
+
+        while filename_format_validation_check:
+            input_format = input('Input tags, space separated: ')
+            filename_tags = input_format.split(' ')
+
+            if [1 for el in filename_tags if el is not in self.all_tags]) == 0:
+                filename_format_validation_check = False
+            else:
+                print('Invalid input')
+
+        while separator in invalid_separators:
+            separator = input('Choose a character to serve as a separator to be placed in between tags in the filename: ')
+
+        self.filename_format = {'separator': separator, 'filename_tags': filename_tags, 'case': case}
+        return self.filename_format
+
+
+
 '''
 testing the class out with the code below
 '''
