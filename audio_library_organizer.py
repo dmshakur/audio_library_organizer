@@ -17,14 +17,14 @@ class AudioLibraryOrganizer:
 
         self.all_tags = None
         self.file_name_format = None
-        self.filetype_tag_translator = None
+        #self.filetype_tag_translator = None
         self.folder_structure = None
         self.tag_case = None
         self.tag_map = None
             
             
             
-    def create_file_dataframe(self, path = 'set_default'):
+    def create_origin_dataframe(self, path = 'set_default'):
         if self.all_tags == None:
             return ValueError('self.tags must be initialized before running this method.')
         if path == 'set_default':
@@ -94,7 +94,7 @@ class AudioLibraryOrganizer:
             
             
             
-    def get_all_tags(self):
+    def create_all_tags(self):
         tags = []
         
         for root, _, files in os.walk(self.origin_path):
@@ -115,13 +115,13 @@ class AudioLibraryOrganizer:
 
         tag_map = {}
 
-        for tag in all_tags:
+        for tag in self.all_tags:
             operation = 'none'
             while operation not in ['delete', 'change', 'keep', 'mimic']:
-                operation = input('Input operation to do on current tag "{tag}", "delete" "mimic" "change" "keep": ')
+                operation = input(f'Input operation to do on current tag "{tag}", "delete" "mimic" "change" "keep": ')
 
             if operation == 'delete':
-                tagmap[tag] = operation
+                tag_map[tag] = operation
             elif operation == 'change':
                 unique_tag_check = True
                 new_tag = ''
@@ -131,6 +131,8 @@ class AudioLibraryOrganizer:
                         cont = input('This tag is not in self.all_tags, continue to change? y/n: ')
                         if cont.lower() == 'y':
                             unique_tag_check = False
+                    else:
+                        unique_tag_check = False
                 tag_map[tag] = new_tag
             elif operation == 'mimic':
                 tag_to_mimic = ''
@@ -141,8 +143,8 @@ class AudioLibraryOrganizer:
             elif operation == 'keep':
                 tag_map[tag] = 'keep'
 
-            self.tag_map = tag_map
-            return tag_map
+        self.tag_map = tag_map
+        return tag_map
 
 
 
@@ -153,8 +155,8 @@ class AudioLibraryOrganizer:
         invalid_separators = '/><:"\'\n?*|'
         case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
 
-        while capital not in case_options:
-            case = input('Input the case type that all filenames should have, only the following options are valid, {case_options}: ')
+        while case not in case_options:
+            case = input(f'Input the case type that all filenames should have, only the following options are valid, {case_options}: ')
 
         print(f'From the following tags, select which you would like to appear in filenames and in the order that you want them to appear:\n{", ".join(self.all_tags)}')
 
@@ -172,18 +174,17 @@ class AudioLibraryOrganizer:
         while separator in invalid_separators:
             separator = input('Choose a character to serve as a separator to be placed in between tags in the filename: ')
 
-        self.filename_format = {'separator': separator, 'filename_tags': filename_tags, 'case': case}
-        self.filename_format = filename_format
+        filename_format = self.filename_format = {'separator': separator, 'filename_tags': filename_tags, 'case': case}
         return filename_format
 
 
 
-    def tag_case_format(self):
+    def create_tag_case_format(self):
         case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
         tag_case = ''
 
-        while case_selection not in case_options:
-            tag_case = input(f'Select a case option from one of the following to be used with tag text: {", ".join(case_options)}')
+        while tag_case not in case_options:
+            tag_case = input(f'Select a case option from one of the following to be used with tag text, {", ".join(case_options)}: ')
         self.tag_case = tag_case
         return tag_case
 
@@ -207,6 +208,14 @@ class AudioLibraryOrganizer:
         return folder_structure
 
 
+
+    def create_new_library(self):
+        if None in []:
+            return ValueError('Cannot run unless all member variables are initialized.')
+
+        
+
+
 '''
 testing the class out with the code below
 '''
@@ -214,8 +223,8 @@ testing the class out with the code below
 kg = 'MAÑANA SERÁ BONITO'
 d = os.path.join(os.getcwd(), '..', kg)
 alo = AudioLibraryOrganizer(d)
-alo.get_all_tags()
-alo.create_file_dataframe().to_csv('df.csv')
+alo.create_all_tags()
+#alo.create_file_dataframe().to_csv('df.csv')
 
 def pretty_format(obj):
     import pprint
