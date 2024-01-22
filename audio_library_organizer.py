@@ -54,11 +54,13 @@ class AudioLibraryOrganizer:
 
 
     def set_dest_path(self, dest_path):
-        if destpath == self.origin_path or not os.listdir(destpath):
+        '''
+        if dest_path == self.origin_path or not os.listdir(dest_path):
             print('Destination path cannot be the same as self.origin_path, and the directory musg be empty')
-            while dest_path == self.origin_path or not os.listdir(destpath):
+            while dest_path == self.origin_path or not os.listdir(dest_path):
                 dest_path = input('Enter a new destination path: ')
-        self.dest_path = dest_path
+                '''
+        self.__dest_path = dest_path
         print(f'Destination path set: {dest_path}')
         return dest_path
             
@@ -209,11 +211,42 @@ class AudioLibraryOrganizer:
 
 
 
+    def create_new_file_paths(self):
+        if None in [self.folder_structure, self.filename_format]:
+            return ValueError('Neither self.folder_structure or self.filename_format can be None to run this method.')
+
+        df = self.origin_df
+
+        for index, row in df.iterrows():
+            new_file_name = [row[item] for item in self.filename_format['filename_tags']]
+            case = self.filename_format['case'] 
+            if case == 'capital_case':
+                new_file_name = list(map(lambda x: x.capitalize(), new_file_name))
+                new_file_name = self.filename_format['separator'].join(new_file_name)
+            elif case == 'all_caps':
+                new_file_name = list(map(lambda x: x.upper(), new_file_name))
+                new_file_name = self.filename_format['separator'].join(new_file_name)
+            elif case == 'all_lower':
+                new_file_name = list(map(lambda x: x.lower(), new_file_name))
+                new_file_name = self.filename_format['separator'].join(new_file_name)
+            elif case == 'first_word_cap':
+                new_file_name[0] = new_file_name[0].capitalize()
+                new_file_name = self.filename_format['separator'].join(new_file_name)
+            new_folder_structure = [row[item] for item in self.folder_structure]
+
+            file_dest_path = os.path.join(self.__dest_path, *new_folder_structure, new_file_name)
+            
+            df.at[index, 'dest_path'] = file_dest_path
+
+        self.origin_df = df
+        return df
+
+
     def create_new_library(self):
-        if None in []:
+        if None in [self.origin_path, self.d__dest_path, self.all_tags, self.filename_format, self.folder_structure, self.tag_case, self.tag_map]:
             return ValueError('Cannot run unless all member variables are initialized.')
 
-        
+       #for row in self.origin_df.itertuples(): 
 
 
 '''
@@ -224,7 +257,11 @@ kg = 'MAÑANA SERÁ BONITO'
 d = os.path.join(os.getcwd(), '..', kg)
 alo = AudioLibraryOrganizer(d)
 alo.create_all_tags()
-#alo.create_file_dataframe().to_csv('df.csv')
+alo.create_origin_dataframe()
+alo.set_dest_path(os.path.join(os.getcwd(), 'test'))
+alo.create_folder_structure()
+alo.create_filename_format()
+alo.create_new_file_paths().to_csv('df.csv')
 
 def pretty_format(obj):
     import pprint
