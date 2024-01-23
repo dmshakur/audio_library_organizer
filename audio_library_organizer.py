@@ -2,8 +2,10 @@ import logging
 import os
 import re
 import shutil
+import warnings
+warnings.filterwarnings('ignore', category = DeprecationWarning)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename = 'audio_library_organizer.log', level=logging.INFO, format='%(asctime)s \n %(levelname)s \n %(message)s\n')
 
 from mutagen.easyid3 import EasyID3
 from mutagen.flac import FLAC
@@ -13,24 +15,27 @@ from mutagen.ogg import OggFileType
 import pandas as pd
 
 class AudioLibraryOrganizer:
-    def __init__(self, origin_path, dest_path = None):
-        self.origin_path = origin_path
+    def __init__(self, origin_path: str, dest_path = None, origin_df = None, all_tags = None, folder_name_format = None, file_format = None, folder_structure = None, tag_case = None, tag_map = None):
+        try:
+            self.origin_path = eval(origin_path)
+        except Exception:
+            logging.exception(f'origin_path not compatible with eval: {origin_path}')
+            self.origin_path = origin_path
         if dest_path == origin_path:
             return ValueError(f'Destination path cannot be the same as origin path: {dest_path}')
-        self.origin_df = None
-        self.__dest_path = dest_path
-
-        self.all_tags = None
-        self.file_name_format = None
+        self.origin_df = origin_df or None
+        self.__dest_path = dest_path or None
+        self.all_tags = all_tags or None
+        self.file_format = file_format or None
         #self.filetype_tag_translator = None
-        self.folder_case = None
-        self.folder_structure = None
-        self.tag_case = None
-        self.tag_map = None
+        self.folder_name_format = folder_name_format or None
+        self.folder_structure = folder_structure or None
+        self.tag_case = tag_case or None
+        self.tag_map = tag_map or None
             
             
             
-    def create_origin_dataframe(self, path = 'set_default'):
+    def create_origin_dataframe(self, path: str = 'set_default'):
         if self.all_tags == None:
             return ValueError('self.tags must be initialized before running this method.')
         if path == 'set_default':
@@ -58,20 +63,22 @@ class AudioLibraryOrganizer:
 
 
 
-    def set_dest_path(self, dest_path):
-        '''
-        if dest_path == self.origin_path or not os.listdir(dest_path):
+    def set_dest_path(self, dest_path: str):
+        try:
+            dest_path = eval(dest_path)
+        except Exception:
+            logging.exception(f'Dest_path not compatible with eval: {dest_path}')
+        if dest_path == self.origin_path or len(os.listdir(dest_path)) > 1:
             print('Destination path cannot be the same as self.origin_path, and the directory musg be empty')
             while dest_path == self.origin_path or not os.listdir(dest_path):
                 dest_path = input('Enter a new destination path: ')
-                '''
         self.__dest_path = dest_path
         print(f'Destination path set: {dest_path}')
         return dest_path
             
             
                 
-    def get_file_tags(self, full_path):
+    def get_file_tags(self, full_path: str):
         aud_obj = self.get_audio_obj(full_path)
         try:
             tags = dict(aud_obj.tags)
@@ -87,7 +94,7 @@ class AudioLibraryOrganizer:
         
         
     
-    def get_audio_obj(self, path):
+    def get_audio_obj(self, path: str):
         filename, ext = os.path.splitext(path)
         
         if ext == '.mp3':
@@ -101,7 +108,7 @@ class AudioLibraryOrganizer:
             
 
 
-    def create_new_file(self, full_path, dest_path):
+    def create_new_file(self, full_path: str, dest_path: str):
         shutil.copy2(full_path, dest_path)
         aud_obj = self.get_audio_obj(dest_path)
 
@@ -109,35 +116,19 @@ class AudioLibraryOrganizer:
             if op == 'delete':
                 del aud_obj[tag]
             elif op != 'keep':
-                aud_obj[tag] = op
+                aud_obj[tag] = [op]
 
-        case = self.tag_case
         try:
-            for tag, tag_val in aud_obj.tags.items():
-                if case == 'capital_case':
-                    match = lambda m: m.group(0).upper()
-                    aud_obj[tag] = [re.sub(
-                        r'(?<![a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ])[a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ]',
-                        match, 
-                        aud_obj[tag][0].lower(), 
-                        flags=re.UNICODE
-                    )]
-
-                elif case == 'all_caps':
-                    aud_obj[tag] = [aud_obj[tag][0].upper()]
-
-                elif case == 'all_lower':
-                    aud_obj[tag] = [aud_obj[tag][0].lower()]
-
-                elif case == 'first_word_cap':
-                    aud_obj[tag] = aud_obj[tag][0].capitalize() + [aud_obj[tag][0][1:].lower()]
+            for tag, _ in aud_obj.tags.items():
+                aud_obj[tag] = self.change_case(aud_obj[tag][0], self.tag_case)
             aud_obj.save()
         except Exception:
-            logging.exception('Error likely due to non-audio file')
-            print(f'dest: {dest_path}, origin: {full_path}') 
+            logging.exception(f'Error likely due to non-audio file. dest: {dest_path}, origin: {full_path}')
 
             
+
     def create_all_tags(self):
+        print('*********Getting all file tags.')
         tags = []
         
         for root, _, files in os.walk(self.origin_path):
@@ -153,6 +144,7 @@ class AudioLibraryOrganizer:
 
 
     def create_tag_map(self):
+        print('*********Creating tag map.')
         if self.all_tags == None:
             return ValueError('self.all_tags not initialized, value is currently set to None')
 
@@ -186,6 +178,7 @@ class AudioLibraryOrganizer:
 
 
     def create_filename_format(self):
+        print('********Creating filename format')
         filename_tags = []
         separator = '?'
         case = ''
@@ -217,6 +210,7 @@ class AudioLibraryOrganizer:
 
 
     def create_tag_case_format(self):
+        print('********Creating Tag case format.')
         case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
         tag_case = ''
 
@@ -228,10 +222,8 @@ class AudioLibraryOrganizer:
 
 
     def create_folder_structure(self):
-        print('Using the following tags choose what tags to sort by for folders, and in the order that you want them.')
-
-        print(', '.join(self.all_tags))
-
+        print('********Creating folder structure.')
+        print(f'Using the following tags choose what tags to sort by for folders, and in the order that you want them: {", ".join(self.all_tags)}')
         folder_structure = 'invalid'
 
         while folder_structure == 'invalid':
@@ -246,42 +238,36 @@ class AudioLibraryOrganizer:
 
 
 
-    def create_new_file_paths(self):
+    def create_dest_file_paths(self):
+        print('********Creating dest file paths.')
         if None in [self.folder_structure, self.filename_format]:
             return ValueError('Neither self.folder_structure or self.filename_format can be None to run this method.')
 
         df = self.origin_df.copy()
         for index, row in df.iterrows():
             new_file_name = [row[item] for item in self.filename_format['filename_tags']]
-            case = self.filename_format['case'] 
 
-            if case == 'capital_case':
-                new_file_name = self.filename_format['separator'].join(new_file_name)
-                match = lambda m: m.group(0).upper()
-                new_file_name = re.sub(r'(?<![a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ])[a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ]', match, new_file_name.lower(), flags=re.UNICODE)
+            new_file_name = \
+                self.filename_format['separator'].join(new_file_name)
+            new_file_name = \
+                self.change_case(new_file_name, self.filename_format['case']).replace(' ', self.filename_format['separator'])
 
-            elif case == 'all_caps':
-                new_file_name = self.filename_format['separator'].join(new_file_name)
-                new_file_name = new_file_name.upper()
+            file_folder_structure = [row[item] for item in self.folder_structure]
+            for idx, folder in enumerate(file_folder_structure):
+                formatted_folder = folder.replace(' ', self.folder_format['separator'])
+                formatted_folder = self.change_case(formatted_folder, self.folder_format['case'])
+                file_folder_structure[idx] = formatted_folder
 
-            elif case == 'all_lower':
-                new_file_name = self.filename_format['separator'].join(new_file_name)
-                new_file_name = new_file_name.lower()
-
-            elif case == 'first_word_cap':
-                new_file_name = self.filename_format['separator'].join(new_file_name)
-                new_file_name = new_file_name[0].capitalize() + new_file_name[1:].lower()
-
-            new_file_name = new_file_name.replace(' ', self.filename_format['separator'])
-            new_folder_structure = [row[item] for item in self.folder_structure]
-            file_dest_path = os.path.join(self.__dest_path, *new_folder_structure, new_file_name)
+            file_dest_path = os.path.join(self.__dest_path, *file_folder_structure, new_file_name)
             df.at[index, 'dest_path'] = file_dest_path
 
         self.origin_df = df
         return df
 
 
-    def create_new_library(self):
+
+    def create_dest_library(self):
+        print('********Creating dest library.')
         if None in [self.origin_path, self.__dest_path, self.all_tags, self.filename_format, self.folder_structure, self.tag_case, self.tag_map]:
             return ValueError('Cannot run unless all member variables are initialized.')
 
@@ -291,15 +277,56 @@ class AudioLibraryOrganizer:
                 self.create_new_file(row['origin_path'], row['dest_path'] + row['type'])
             else:
                 os.makedirs(path)
-                self.create_new_file(row['origin_path'], row['dest_path'])
+                self.create_new_file(row['origin_path'], row['dest_path'] + row['type'])
 
         print(f'New library created at: {self.__dest_path}')
 
 
 
+    def create_folder_format(self, sep: str, case: str):
+        self.folder_format['separator'] = sep
+        self.folder_format['case'] = case
+
+
+
+    def change_case(self, value: str, case: str):
+        if case == 'capital_case':
+            match = lambda m: m.group(0).upper()
+            return re.sub(
+                r'(?<![a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ])[a-zA-ZàèìòùáéíóúäëïöüãñõÀÈÌÒÙÁÉÍÓÚÄËÏÖÜÃÑÖ]', 
+                match, 
+                value.lower(), 
+                flags=re.UNICODE
+            )
+        elif case == 'all_caps':
+            return value.upper()
+        elif case == 'all_lower':
+            return value.lower()
+        elif case == 'first_word_cap':
+            return value[0].capitalize() + value[1:].lower()
+
+
+
+    def __call__(self, dest_path = False):
+        self.create_all_tags()
+        self.create_origin_dataframe()
+        self.set_dest_path(dest_path or input('Enter destination path: '))
+        self.create_folder_structure()
+        self.create_filename_format()
+        self.create_tag_case_format()
+        self.create_tag_map()
+        sep = input('Enter separator: ')
+        case = input('Enter case: ')
+        self.create_folder_format(sep, case)
+        self.create_dest_file_paths()
+        self.create_dest_library()
+
+
+if __name__ == '__main__':
+    audio_org = AudioLibraryOrganizer(input('Input origin path: '))
+    audio_org()
 '''
 testing the class out with the code below
-'''
 
 kg = 'MAÑANA SERÁ BONITO'
 d = os.path.join(os.getcwd(), '..', kg)
@@ -311,12 +338,7 @@ alo.folder_structure = ['genre', 'artist', 'album']
 alo.filename_format = {'separator': ' ', 'filename_tags': ['tracknumber', 'title', 'artist'], 'case': 'capital_case'}
 alo.tag_case = 'capital_case'
 alo.tag_map = {tag: 'keep' for tag in alo.all_tags}
-alo.folder_name_format = {'case': 'capital_case', 'separator': ' '}
-alo.create_new_file_paths().to_csv('df.csv')
-alo.create_new_library()
-
-def pretty_format(obj):
-    import pprint
-    pp = pprint.PrettyPrinter(indent=4, width=80, depth=None, compact=False)
-    formatted_str = pp.pformat(obj)
-    print(formatted_str)
+alo.folder_format = {'case': 'capital_case', 'separator': ' '}
+alo.create_dest_file_paths().to_csv('df.csv')
+alo.create_dest_library()
+'''
