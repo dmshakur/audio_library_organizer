@@ -3,31 +3,34 @@ import os
 import re
 import shutil
 import warnings
+
 warnings.filterwarnings('ignore', category = DeprecationWarning)
 
 logging.basicConfig(filename = 'audio_library_organizer.log', level=logging.INFO, format='%(asctime)s \n %(levelname)s \n %(message)s\n')
 
 from mutagen.easyid3 import EasyID3
-from mutagen.flac import FLAC
+#from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
-from mutagen.mp4 import MP4
-from mutagen.ogg import OggFileType
+#from mutagen.mp4 import MP4
+#from mutagen.ogg import OggFileType
 import pandas as pd
 
 class AudioLibraryOrganizer:
     def __init__(self, origin_path: str, dest_path = None, origin_df = None, all_tags = None, folder_name_format = None, file_format = None, folder_structure = None, tag_case = None, tag_map = None):
         try:
             self.origin_path = eval(origin_path)
+            print(f'Origin path set: {self.origin_path}\n')
         except Exception:
-            logging.exception(f'origin_path not compatible with eval: {origin_path}')
+            logging.exception(f'origin_path not compatible with eval: {origin_path}\n')
             self.origin_path = origin_path
+            print(f'Origin path set: {self.origin_path}\n')
         if dest_path == origin_path:
-            return ValueError(f'Destination path cannot be the same as origin path: {dest_path}')
+            return ValueError(f'Destination path cannot be the same as origin path: {dest_path}\n')
         self.origin_df = origin_df or None
         self.__dest_path = dest_path or None
         self.all_tags = all_tags or None
         self.file_format = file_format or None
-        #self.filetype_tag_translator = None
+        #self.filetype_tag_translator = None #For use when using different fike types, as other file types have different tag systems, than mp3
         self.folder_name_format = folder_name_format or None
         self.folder_structure = folder_structure or None
         self.tag_case = tag_case or None
@@ -128,7 +131,7 @@ class AudioLibraryOrganizer:
             
 
     def create_all_tags(self):
-        print('*********Getting all file tags.')
+        print('\n*********Getting all file tags.')
         tags = []
         
         for root, _, files in os.walk(self.origin_path):
@@ -144,7 +147,8 @@ class AudioLibraryOrganizer:
 
 
     def create_tag_map(self):
-        print('*********Creating tag map.')
+        print('\n*********Creating tag map.')
+
         if self.all_tags == None:
             return ValueError('self.all_tags not initialized, value is currently set to None')
 
@@ -152,12 +156,12 @@ class AudioLibraryOrganizer:
 
         for tag in self.all_tags:
             operation = 'none'
-            while operation not in ['delete', 'change', 'keep']:
-                operation = input(f'Input operation to do on current tag "{tag}", "delete" "change" "keep": ')
+            while operation not in ['delete', 'change', 'keep', 'd', 'c', 'k']:
+                operation = input(f'Input operation to do on current tag "{tag}", "[d]elete" "[c]hange" "[k]eep": ')
 
-            if operation == 'delete':
+            if operation in ['d', 'delete']:
                 tag_map[tag] = operation
-            elif operation == 'change':
+            elif operation in ['c', 'change']:
                 unique_tag_check = True
                 new_tag = ''
                 while unique_tag_check:
@@ -169,7 +173,7 @@ class AudioLibraryOrganizer:
                     else:
                         unique_tag_check = False
                 tag_map[tag] = new_tag
-            elif operation == 'keep':
+            elif operation in ['k', 'keep']:
                 tag_map[tag] = 'keep'
 
         self.tag_map = tag_map
@@ -178,7 +182,7 @@ class AudioLibraryOrganizer:
 
 
     def create_filename_format(self):
-        print('********Creating filename format')
+        print('\n********Creating filename format')
         filename_tags = []
         separator = '?'
         case = ''
@@ -210,7 +214,7 @@ class AudioLibraryOrganizer:
 
 
     def create_tag_case_format(self):
-        print('********Creating Tag case format.')
+        print('\n********Creating Tag case format.')
         case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
         tag_case = ''
 
@@ -222,7 +226,7 @@ class AudioLibraryOrganizer:
 
 
     def create_folder_structure(self):
-        print('********Creating folder structure.')
+        print('\n********Creating folder structure.')
         print(f'Using the following tags choose what tags to sort by for folders, and in the order that you want them: {", ".join(self.all_tags)}')
         folder_structure = 'invalid'
 
@@ -239,7 +243,7 @@ class AudioLibraryOrganizer:
 
 
     def create_dest_file_paths(self):
-        print('********Creating dest file paths.')
+        print('\n********Creating dest file paths.')
         if None in [self.folder_structure, self.filename_format]:
             return ValueError('Neither self.folder_structure or self.filename_format can be None to run this method.')
 
@@ -254,8 +258,8 @@ class AudioLibraryOrganizer:
 
             file_folder_structure = [row[item] for item in self.folder_structure]
             for idx, folder in enumerate(file_folder_structure):
-                formatted_folder = folder.replace(' ', self.folder_format['separator'])
-                formatted_folder = self.change_case(formatted_folder, self.folder_format['case'])
+                formatted_folder = folder.replace(' ', self.folder_name_format['separator'])
+                formatted_folder = self.change_case(formatted_folder, self.folder_name_format['case'])
                 file_folder_structure[idx] = formatted_folder
 
             file_dest_path = os.path.join(self.__dest_path, *file_folder_structure, new_file_name)
@@ -267,7 +271,7 @@ class AudioLibraryOrganizer:
 
 
     def create_dest_library(self):
-        print('********Creating dest library.')
+        print('\n********Creating dest library.')
         if None in [self.origin_path, self.__dest_path, self.all_tags, self.filename_format, self.folder_structure, self.tag_case, self.tag_map]:
             return ValueError('Cannot run unless all member variables are initialized.')
 
@@ -283,9 +287,18 @@ class AudioLibraryOrganizer:
 
 
 
-    def create_folder_format(self, sep: str, case: str):
-        self.folder_format['separator'] = sep
-        self.folder_format['case'] = case
+    def create_folder_name_format(self, separator = False, case = False):
+        print('\n********Creating folder name format')
+        if not separator:
+            separator = input('Enter folder name separator: ')
+        if not case:
+            case_options = {'all_caps', 'all_lower', 'capital_case', 'first_word_cap'}
+            while case not in case_options:
+                case = input(f'Enter case from option, {", ".join(case_options)}: ')
+        folder_name_format = {}
+        folder_name_format['separator'] = seprator
+        folder_name_format['case'] = case
+        self.folder_name_format = folder_name_format
 
 
 
@@ -315,30 +328,11 @@ class AudioLibraryOrganizer:
         self.create_filename_format()
         self.create_tag_case_format()
         self.create_tag_map()
-        sep = input('Enter separator: ')
-        case = input('Enter case: ')
-        self.create_folder_format(sep, case)
+        self.create_folder_name_format(sep, case)
         self.create_dest_file_paths()
         self.create_dest_library()
 
 
 if __name__ == '__main__':
-    audio_org = AudioLibraryOrganizer(input('Input origin path: '))
-    audio_org()
-'''
-testing the class out with the code below
-
-kg = 'MAÑANA SERÁ BONITO'
-d = os.path.join(os.getcwd(), '..', kg)
-alo = AudioLibraryOrganizer(d)
-alo.create_all_tags()
-alo.create_origin_dataframe()
-alo.set_dest_path(os.path.join(os.getcwd(), 'test'))
-alo.folder_structure = ['genre', 'artist', 'album']
-alo.filename_format = {'separator': ' ', 'filename_tags': ['tracknumber', 'title', 'artist'], 'case': 'capital_case'}
-alo.tag_case = 'capital_case'
-alo.tag_map = {tag: 'keep' for tag in alo.all_tags}
-alo.folder_format = {'case': 'capital_case', 'separator': ' '}
-alo.create_dest_file_paths().to_csv('df.csv')
-alo.create_dest_library()
-'''
+    audio_library_organizer = AudioLibraryOrganizer(input('Input origin path: '))
+    audio_library_organizer()
